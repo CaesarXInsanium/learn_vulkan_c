@@ -1,0 +1,10 @@
+# Xmake cache
+.xmake/
+build/
+vulkan_tutorial_en.pdf
+compile_commands.json
+
+# MacOS Cache
+.DS_Store
+
+
