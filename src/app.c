@@ -22,7 +22,7 @@ const bool enable_validation_layers = false;
 const bool enable_validation_layers = true;
 #endif
 
-bool check_validation_layer_supprt(void) {
+bool check_validation_layer_support(void) {
   uint32_t layer_count;
   vkEnumerateInstanceLayerProperties(&layer_count, NULL);
   VkLayerProperties *layer_properties_buffer =
@@ -59,22 +59,26 @@ GLFWwindow *initWindow(void) {
   return app_window;
 }
 VkResult createInstance(VkInstance *instance) {
-  if (enable_validation_layers && !check_validation_layer_supprt()) {
+  if (enable_validation_layers && !check_validation_layer_support()) {
     return VK_ERROR_LAYER_NOT_PRESENT;
   }
 
   puts("Creating Instance!");
   VkApplicationInfo app_info;
   app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+  app_info.pNext = NULL;
   app_info.pApplicationName = "Hello Triangle";
   app_info.pEngineName = "No Engine";
+  app_info.engineVersion = VK_MAKE_VERSION(0, 0, 1);
   app_info.apiVersion = VK_API_VERSION_1_0;
 
   VkInstanceCreateInfo create_info;
+  {};
+  create_info.pNext = NULL;
   create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   create_info.pApplicationInfo = &app_info;
 
-  // validation_layers
+  // validation_layer
   if (enable_validation_layers) {
 
     uint32_t inst_layer_count = 1;
