@@ -9,6 +9,7 @@ add_requires("cglm", {system = true})
 add_requires("vulkan", {system = true})
 
 target("cvulkan_learn")
+    add_cflags("-g", "-DDEBUG")
     set_kind("binary")
     add_files("src/*.c")
     add_includedirs("include")
