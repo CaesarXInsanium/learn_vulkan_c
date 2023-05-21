@@ -57,6 +57,8 @@ void print_extensions(struct Extensions ext) {
   }
 }
 
+char** 
+
 void Extensions_destroy(struct Extensions self) {
   for (int i = 0; i < self.count; i++) {
     free(self.extensions[i]);
