@@ -24,6 +24,7 @@ vklearn = [
   'src/app.c',
   'src/constants.c',
   'src/main.c',
+  'src/window.c',
 ]
 
 vklearn_exe = executable(

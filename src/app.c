@@ -1,3 +1,5 @@
+#include "constants.h"
+#include "window.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,9 +11,13 @@
 #include <GLFW/glfw3.h>
 
 #include "app.h"
-#include "constants.h"
 static GLFWwindow *app_window = NULL;
+static VkDebugUtilsMessengerEXT debug_messenger;
 
+void process_input(GLFWwindow *window) {
+  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    glfwSetWindowShouldClose(window, GLFW_TRUE);
+}
 // static VkInstance app_instance;
 // this shit will only work if vulkan validation layers are installed
 char *validation_layers[] = {
@@ -59,7 +65,7 @@ debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severety,
                VkDebugUtilsMessageTypeFlagsEXT message_type,
                const VkDebugUtilsMessengerCallbackDataEXT *p_callback_data,
                void *p_user_data) {
-  fprintf(stderr, "Validation Layer: %s\n%p%p\nUser Data: %p\n",
+  fprintf(stdout, "Validation Layer: %s\n%p%p\nUser Data: %p\n",
           p_callback_data->pMessage, (void *)&message_severety,
           (void *)&message_type, p_user_data);
   ;
@@ -73,42 +79,59 @@ VkResult create_debug_utils_messenger_ext(
     VkDebugUtilsMessengerEXT *p_debug_messenger) {
   PFN_vkCreateDebugUtilsMessengerEXT func =
       (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-          instance, "VkDebugUtilsMessengerCreateInfoEXT");
+          instance, "vkCreateDebugUtilsMessengerEXT");
 
-  if (func == NULL) {
+  if (func != NULL) {
     return func(instance, p_create_info, p_allocator, p_debug_messenger);
   } else {
     return VK_ERROR_EXTENSION_NOT_PRESENT;
   }
 }
 
-void destroy_utils_messenger_ext(
-  VkInstance instance,
-  VkDebugUtilsMessengerEXT debug_messenger,
-  const VkAllocationCallbacks *p_allocator
-){
-  PFN_vkDestroyDebugUtilsMessengerEXT func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-    instance,
-    "vkDestroyDEbugUtilsMessengerEXT"
-  );
+void destroy_utils_messenger_ext(VkInstance instance,
+                                 VkDebugUtilsMessengerEXT debug_messenger,
+                                 const VkAllocationCallbacks *p_allocator) {
+  PFN_vkDestroyDebugUtilsMessengerEXT func =
+      (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+          instance, "vkDestroyDebugUtilsMessengerEXT");
 
-  if (func != NULL){
+  if (func != NULL) {
     func(instance, debug_messenger, p_allocator);
   }
 }
 
-GLFWwindow *initWindow(void) {
-  glfwInit();
-  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-  GLFWwindow *app_window =
-      glfwCreateWindow(WIDTH, HEIGHT, WINDOW_NAME, NULL, NULL);
-  if (app_window == NULL) {
-    fprintf(stderr, "Failed to Create Window: %s\n", WINDOW_NAME);
-  }
-  return app_window;
+void populate_debug_messenger_create_info(
+    VkDebugUtilsMessengerCreateInfoEXT *create_info,
+    PFN_vkDebugUtilsMessengerCallbackEXT callback) {
+  create_info->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+
+  create_info->pNext = NULL;
+  create_info->flags = 0;
+  create_info->messageSeverity =
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+  create_info->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+  create_info->pfnUserCallback = callback;
+  create_info->pUserData = NULL;
 }
-VkResult createInstance(VkInstance *instance) {
+
+void setupDebugMessenger(VkInstance instance) {
+
+  if (!enable_validation_layers)
+    return;
+  VkDebugUtilsMessengerCreateInfoEXT create_info;
+  populate_debug_messenger_create_info(&create_info, debug_callback);
+  if (create_debug_utils_messenger_ext(instance, &create_info, NULL,
+                                       &debug_messenger) != VK_SUCCESS) {
+    fprintf(stderr, "Failed to Setup Debug Messenger!\n");
+    return;
+  }
+}
+VkResult create_instance(VkInstance *instance) {
   if (enable_validation_layers && !check_validation_layer_support()) {
     return VK_ERROR_LAYER_NOT_PRESENT;
   }
@@ -120,21 +143,31 @@ VkResult createInstance(VkInstance *instance) {
   app_info.pApplicationName = "Hello Triangle";
   app_info.pEngineName = "No Engine";
   app_info.engineVersion = VK_MAKE_VERSION(0, 0, 1);
-  app_info.apiVersion = VK_API_VERSION_1_0;
+  app_info.apiVersion = VK_API_VERSION_1_3;
+
+  VkDebugUtilsMessengerCreateInfoEXT debug_create_info;
 
   VkInstanceCreateInfo create_info;
   {};
   create_info.pNext = NULL;
+  create_info.flags = 0;
   create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   create_info.pApplicationInfo = &app_info;
 
   // validation_layers
-  if (enable_validation_layers) {
-
+  if (enable_validation_layers && check_validation_layer_support()) {
     create_info.enabledLayerCount = validation_layers_count;
     create_info.ppEnabledLayerNames = (const char *const *)validation_layers;
+    populate_debug_messenger_create_info(&debug_create_info, debug_callback);
+
+    create_info.pNext =
+        (VkDebugUtilsMessengerCreateInfoEXT *)&debug_create_info;
+  } else if (enable_validation_layers && !check_validation_layer_support()) {
+    fprintf(stderr, "Validation layers not supported!\n");
+    return VK_ERROR_UNKNOWN;
   } else {
     create_info.enabledLayerCount = 0;
+    create_info.pNext = NULL;
   }
   // check vulkan support
   if (glfwVulkanSupported() == GLFW_FALSE) {
@@ -158,30 +191,8 @@ VkResult createInstance(VkInstance *instance) {
 
   return result;
 }
-void setupDebugMessenger(VkInstance instance) {
-  if (!enable_validation_layers)
-    return;
-  VkDebugUtilsMessengerCreateInfoEXT create_info;
-  {};
-  create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-  create_info.messageSeverity =
-      VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-      VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-  create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-  // 53
-  create_info.pfnUserCallback = debug_callback;
-  create_info.pUserData = NULL;
-  if (create_debug_utils_messenger_ext(instance, &create_info, NULL,
-                                       debug_messenger) != VK_SUCCESS) {
-    fprintf(stderr, "Failed to Setup Debug Messenger!\n");
-    exit(1);
-  }
-}
 VkResult initVulkan(VkInstance *instance) {
-  VkResult instance_result = createInstance(instance);
+  VkResult instance_result = create_instance(instance);
   if (instance_result != VK_SUCCESS) {
     puts("Failed to Create Instance");
     return instance_result;
@@ -194,13 +205,14 @@ VkResult initVulkan(VkInstance *instance) {
 void mainLoop(GLFWwindow *window) {
   app_window = window;
   while (!glfwWindowShouldClose(window)) {
+    process_input(window);
     glfwPollEvents();
   }
 }
 
 // page 55
 void cleanup(VkInstance *instance, GLFWwindow *window) {
-  if(enable_validation_layers){
+  if (enable_validation_layers) {
     destroy_utils_messenger_ext(*instance, debug_messenger, NULL);
   }
   vkDestroyInstance(*instance, NULL);
@@ -211,7 +223,7 @@ void cleanup(VkInstance *instance, GLFWwindow *window) {
 int run(void) {
   int exit_status = 0;
   VkInstance instance;
-  GLFWwindow *window = initWindow();
+  GLFWwindow *window = init_window();
   VkResult vulkan_init = initVulkan(&instance);
   if (VK_SUCCESS != vulkan_init) {
     printf("Relevant Error: %s\n", vk_result_char(vulkan_init));
