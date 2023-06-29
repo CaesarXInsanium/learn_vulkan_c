@@ -1,5 +1,5 @@
 project(
-  'learn_vulkan',
+  'RaxtorC',
   'c',
   version : '0.1',
   default_options: [
@@ -7,30 +7,47 @@ project(
     'werror=true',
     'buildtype=debug',
     'debug=true',
-    #'optimization=3',
-    'c_std=c18'
+    'c_std=gnu18'
   ]
 )
 
-
 DEPS = [
   dependency('glfw3'),
-  dependency('cglm'),
   dependency('vulkan'),
+  dependency('cglm'),
 ]
 
-
-vklearn = [
-  'src/app.c',
-  'src/constants.c',
-  'src/main.c',
-  'src/window.c',
+libraxtor_src = [
+  'raxtor-c/utils.c',
+   'raxtor-c/extensions.c',
+   'raxtor-c/validation.c',
+   'raxtor-c/debug.c',
+   'raxtor-c/instance.c',
+   'raxtor-c/renderer.c',
+  # 'raxtor-c/physical_device.c',
+  # 'raxtor-c/logical_device.c',
+  # 'raxtor-c/renderer.c',
 ]
 
-vklearn_exe = executable(
-          'vklearn',
-          vklearn, 
+libraxtorc = shared_library(
+  'raxtorc',
+  libraxtor_src,
+  dependencies: DEPS,
+  include_directories: include_directories('raxtor-c/include'),
+)
+
+app_src = [
+  'learnvulkan/main.c',
+  'learnvulkan/app.c',
+  'learnvulkan/window.c',
+]
+
+# example executable
+learnvulkan =  executable(
+          'learnvulkan',
+          app_src, 
           install : true,
           dependencies: DEPS,
-          include_directories: include_directories('include')
+          link_with: [libraxtorc],
+          include_directories: include_directories('raxtor-c/include')
 )

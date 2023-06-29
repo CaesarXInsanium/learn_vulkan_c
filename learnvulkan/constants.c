@@ -1,4 +1,5 @@
 #include "constants.h"
+#include <vulkan/vulkan.h>
 
 const char *vk_result_char(VkResult result) {
   switch (result) {
@@ -137,9 +138,9 @@ const char *vk_result_char(VkResult result) {
   case VK_ERROR_COMPRESSION_EXHAUSTED_EXT:
     return "VK_ERROR_COMPRESSION_EXHAUSTED_EXT";
     break;
-  case VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT:
-    return "VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT";
-    break;
+  // case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
+  //   return "VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT";
+  //   break;
   case VK_RESULT_MAX_ENUM:
     return "VK_RESULT_MAX_ENUM";
     break;

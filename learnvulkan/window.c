@@ -15,3 +15,4 @@ GLFWwindow *init_window(void) {
 
   return app_window;
 }
+
